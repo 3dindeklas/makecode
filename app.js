@@ -39,6 +39,7 @@ function notify(message) {
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>toastNode.classList.remove("show"),2600);
 }
 function setState(patch) { state={...state,...patch}; persist(); render(); }
+window.addEventListener("storage", event=>{ if(event.key===STORAGE_KEY){ state=loadState(); render(); } });
 function statusClass(s) { return s === "Offline" ? "offline" : s === "Klaar" ? "finished" : state.paused ? "paused" : ""; }
 function selected() { return state.students.find(s=>s.id===state.selectedStudent) || state.students[0]; }
 function heading(kicker,title,sub) { return `<div class="toolbar"><div><div class="eyebrow">${kicker}</div><h1>${title}</h1><p class="subtitle">${sub}</p></div><div class="spacer"></div><button class="button secondary" data-action="save-session">Bewaar klas</button></div>`; }
@@ -93,7 +94,8 @@ function joinView() {
  return `<div class="student-view">${heading("LEERLING","Doe mee met de klas","Vul je naam in zodat de docent je werk kan volgen.")}<article class="card"><div class="field"><label for="student-name-input">Jouw naam</label><input id="student-name-input" autocomplete="given-name" maxlength="40" placeholder="Bijvoorbeeld Sam"></div><button class="button" data-action="join-class">Ga naar de klas</button><p class="help" style="margin-top:14px">Klascode: <strong>${esc(state.joinCode)}</strong></p></article></div>`;
 }
 function studentWorkspace() {
- const s=selected();
+ const studentId=sessionStorage.getItem("klascode.student");
+ const s=state.students.find(item=>item.id===studentId) || selected();
  const label=`LEERLING · ${esc(s?.name||"")}`;
  return `<div class="student-view">${heading(label,state.activity,"Je werkt in de klas van je docent.")}
  <article class="card"><div class="card-heading"><div><h2>Jouw werk</h2><p class="subtitle">${state.paused?"De docent heeft de klas tijdelijk gepauzeerd.":"Probeer de startcode uit en maak er iets van jezelf van."}</p></div><span class="status ${state.paused?"paused":""}">${state.paused?"Gepauzeerd":"In de klas"}</span></div>
@@ -123,7 +125,7 @@ app.addEventListener("click", async event=>{
  const btn=event.target.closest("[data-action]"); if(!btn)return;
  const id=btn.dataset.id;
  switch(btn.dataset.action){
- case "pause": setState({paused:!state.paused});notify(state.paused?"De klas is hervat.":"De klas is gepauzeerd.");break;
+ case "pause": {const paused=!state.paused;setState({paused});notify(paused?"De klas is gepauzeerd.":"De klas is hervat.");break;}
  case "save-session": download(`KlasCode-${state.activity.replace(/[^a-z0-9]+/gi,"-")}.json`,JSON.stringify(state,null,2));notify("Je klasbestand is gedownload.");break;
  case "restore": document.querySelector("#restore-file").click();break;
  case "report": report();break;
