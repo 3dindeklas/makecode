@@ -9,19 +9,22 @@ const seeded = {
   activeTab: "dashboard",
   selectedStudent: "s1",
   students: [
-    {id:"s1",name:"Noor",status:"In de klas",feeling:"",lastSeen:"Net actief",code:"Hartje laten zien"},
-    {id:"s2",name:"Milan",status:"In de klas",feeling:"",lastSeen:"Net actief",code:"Knop A gebruiken"},
-    {id:"s3",name:"Sofia",status:"Klaar",feeling:"🙂",lastSeen:"1 min geleden",code:"Dobbelsteen"},
-    {id:"s4",name:"Daan",status:"Offline",feeling:"",lastSeen:"3 min geleden",code:"Hartje laten zien"},
-    {id:"s5",name:"Lina",status:"In de klas",feeling:"",lastSeen:"Net actief",code:"Temperatuur meten"}
+    {id:"s1",name:"Noor",status:"In de klas",feeling:"",lastSeen:"Net actief",code:"Hartje laten zien",project:null},
+    {id:"s2",name:"Milan",status:"In de klas",feeling:"",lastSeen:"Net actief",code:"Knop A gebruiken",project:null},
+    {id:"s3",name:"Sofia",status:"Klaar",feeling:"🙂",lastSeen:"1 min geleden",code:"Dobbelsteen",project:null},
+    {id:"s4",name:"Daan",status:"Offline",feeling:"",lastSeen:"3 min geleden",code:"Hartje laten zien",project:null},
+    {id:"s5",name:"Lina",status:"In de klas",feeling:"",lastSeen:"Net actief",code:"Temperatuur meten",project:null}
   ],
   startedAt: new Date().toISOString(),
   starterCode: "Bij start\n  toon patroon: hartje\n\nAltijd\n  pauzeer (ms): 500",
+  starterProject: null,
   version: 1
 };
 
 let state = loadState();
 let toastTimer;
+let editorContext = null;
+let editorFrame = null;
 const app = document.querySelector("#app");
 const toastNode = document.querySelector("#toast");
 
@@ -39,7 +42,21 @@ function notify(message) {
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>toastNode.classList.remove("show"),2600);
 }
 function setState(patch) { state={...state,...patch}; persist(); render(); }
-window.addEventListener("storage", event=>{ if(event.key===STORAGE_KEY){ state=loadState(); render(); } });
+window.addEventListener("storage", event=>{
+  if(event.key!==STORAGE_KEY)return;
+  const studentId=sessionStorage.getItem("klascode.student");
+  const previous=studentId?state.students.find(s=>s.id===studentId)?.project:null;
+  state=loadState();
+  if(studentId){
+    const student=state.students.find(s=>s.id===studentId);
+    if(student?.incomingProject) showSharedProjectPrompt(student.id,student.incomingProject);
+    else if(student?.project && JSON.stringify(previous)!==JSON.stringify(student.project)) importProject(student.project);
+    const status=document.querySelector(".student-view .status");
+    if(status){status.textContent=state.paused?"Gepauzeerd":"In de klas";status.className=`status ${state.paused?"paused":""}`;}
+    return;
+  }
+  render();
+});
 function statusClass(s) { return s === "Offline" ? "offline" : s === "Klaar" ? "finished" : state.paused ? "paused" : ""; }
 function selected() { return state.students.find(s=>s.id===state.selectedStudent) || state.students[0]; }
 function heading(kicker,title,sub) { return `<div class="toolbar"><div><div class="eyebrow">${kicker}</div><h1>${title}</h1><p class="subtitle">${sub}</p></div><div class="spacer"></div><button class="button secondary" data-action="save-session">Bewaar klas</button></div>`; }
@@ -78,17 +95,17 @@ function codeTab() {
  const s=selected();
  if(!s) return `${heading("DOCENT","Code bekijken","Selecteer een leerling in het klasoverzicht.")}${nav()}<div class="empty">Er is nog geen leerling geselecteerd.</div>`;
  return `${heading("DOCENT · LEERLINGWERK",s.name,`Laatste activiteit: ${esc(s.lastSeen)}${s.feeling?` · Gevoel: ${s.feeling}`:""}`)}${nav()}
- <div class="layout"><section class="stack"><article class="card"><div class="card-heading"><div><h2>Wat maakt ${esc(s.name)}?</h2><p class="subtitle">${esc(s.code)} · Laatste opslaan ${esc(s.lastSeen)}</p></div><span class="status ${statusClass(s.status)}">${esc(s.status)}</span></div>
-  <div class="block-preview"><div class="block-palette"><strong>Blokken</strong><div class="palette-block yellow">Bij start</div><div class="palette-block">Toon LEDs</div><div class="palette-block">Knop A</div><div class="palette-block purple">Herhaal</div></div><div class="workspace"><div class="workspace-head"><strong>Werkruimte van ${esc(s.name)}</strong><span>Voorbeeldweergave</span></div><div class="code-block event">Bij start</div><div class="code-block statement">Toon patroon: ${esc(s.code==="Hartje laten zien"?"♥":"☺")}</div><div class="code-block event" style="margin-top:18px">Altijd</div><div class="code-block statement nested">Pauzeer (ms): 500</div><p class="workspace-caption">Dit is een voorbeeld van de blokweergave. Koppel de echte MakeCode-editor om code live te bekijken en bewerken.</p></div></div>
+ <div class="layout"><section class="stack"><article class="card"><div class="card-heading"><div><h2>Werk van ${esc(s.name)}</h2><p class="subtitle">${esc(s.code)} · Laatste opslaan ${esc(s.lastSeen)}</p></div><span class="status ${statusClass(s.status)}">${esc(s.status)}</span></div>
+  <div class="makecode-host"><iframe id="makecode-editor" title="MakeCode-editor van ${esc(s.name)}" src="https://makecode.microbit.org/?controller=1" allow="usb; serial; clipboard-read; clipboard-write"></iframe></div>
   <div class="actions" style="margin-top:16px"><button class="button" data-action="share-to-student" data-id="${s.id}">Deel startcode met ${esc(s.name)}</button><a class="button secondary" href="${MICROBIT_URL}" target="_blank" rel="noopener">Open MakeCode ↗</a></div></article></section>
  <aside class="stack"><article class="card"><h2>Leerlingcode sturen</h2><p class="subtitle">Kies leerlingen die deze startcode moeten krijgen.</p><div class="student-list" style="margin:14px 0">${state.students.map(x=>`<label class="student"><input type="checkbox" data-send-select="${x.id}" ${x.id===s.id?"checked":""}><span class="student-name">${esc(x.name)}</span><span class="status ${statusClass(x.status)}">${esc(x.status)}</span></label>`).join("")}</div><button class="button" data-action="share-selected">Deel met geselecteerden</button></article>
  <article class="card"><h2>Leerling aanpassen</h2><div class="actions"><button class="button secondary" data-action="mark-progress" data-id="${s.id}">Zet op ‘In de klas’</button><button class="button secondary" data-action="mark-finished" data-id="${s.id}">Zet op ‘Klaar’</button><button class="button danger" data-action="remove-student" data-id="${s.id}">Verwijder leerling</button></div></article></aside></div>`;
 }
 function editorTab() {
  return `${heading("DOCENT · STARTCODE","Wat zien leerlingen als ze starten?","Zet een eerste stap klaar die de klas verder kan onderzoeken.")}${nav()}
- <div class="layout"><section class="stack"><article class="card"><div class="card-heading"><div><h2>Startcode voor de klas</h2><p class="subtitle">De leerlingen krijgen deze code wanneer je hem deelt.</p></div></div><div class="editor-launch"><div class="symbol">▧</div><div><h2>Programmeren met MakeCode</h2><p class="subtitle">Open de MakeCode-editor om met de officiële micro:bit-blokken te programmeren.</p></div><a class="button" href="${MICROBIT_URL}" target="_blank" rel="noopener">Open MakeCode ↗</a></div><p class="help" style="margin-top:14px">De koppeling tussen de MakeCode-editor en deze klasomgeving is nog niet gemaakt. De blokken hierboven zijn nu een interfacevoorbeeld.</p></article>
- <article class="card"><h2>Deel een startidee</h2><div class="field"><label for="starter-code">Korte uitleg of startcode</label><textarea id="starter-code">${esc(state.starterCode)}</textarea><small>Beschrijf wat leerlingen zien in de MakeCode-editor. De synchronisatie met echte projecten volgt in de volgende bouwstap.</small></div><div class="actions"><button class="button" data-action="save-starter">Bewaar startidee</button><button class="button teal" data-action="share-all">Deel met alle leerlingen</button><button class="button secondary" data-action="share-selected">Deel met geselecteerden</button></div></article></section>
- <aside class="stack"><article class="card"><h2>Les in één oogopslag</h2><div class="field"><label>Activiteit</label><input value="${esc(state.activity)}" readonly></div><div class="field"><label>Leerlingen</label><input value="${state.students.length}" readonly></div><p class="help">Deelcode vervangt straks de code bij de geselecteerde leerlingen. Dat gebeurt pas nadat de leerling het bevestigt.</p></article><article class="card"><h2>Over deze demo</h2><p class="subtitle">Deze versie laat de docentroute en functies zien in de 3Dindeklas-huisstijl. De volgende bouwstap koppelt een echte blokeditor en een backend voor klasgebruik op meerdere apparaten.</p></article></aside></div>`;
+ <div class="layout"><section class="stack"><article class="card"><div class="card-heading"><div><h2>Startcode voor de klas</h2><p class="subtitle">Gebruik de MakeCode-blokken om de eerste opdracht klaar te zetten.</p></div></div><div class="makecode-host"><iframe id="makecode-editor" title="MakeCode-editor voor de startcode" src="https://makecode.microbit.org/?controller=1" allow="usb; serial; clipboard-read; clipboard-write"></iframe></div></article>
+ <article class="card"><h2>Deel de startcode</h2><div class="field"><label for="starter-code">Korte uitleg voor leerlingen</label><textarea id="starter-code">${esc(state.starterCode)}</textarea><small>De echte blokken worden met geselecteerde leerlingen gedeeld. Zij kunnen de code eerst bekijken en verder aanpassen.</small></div><div class="actions"><button class="button" data-action="save-starter">Bewaar startcode</button><button class="button teal" data-action="share-all">Deel met alle leerlingen</button><button class="button secondary" data-action="share-selected">Deel met geselecteerden</button></div></article></section>
+ <aside class="stack"><article class="card"><h2>Deel met leerlingen</h2><p class="subtitle">Kies wie de startcode mag ontvangen.</p><div class="student-list" style="margin:14px 0">${state.students.map(x=>`<label class="student"><input type="checkbox" data-send-select="${x.id}"><span class="student-name">${esc(x.name)}</span><span class="status ${statusClass(x.status)}">${esc(x.status)}</span></label>`).join("")}</div><div class="field"><label>Activiteit</label><input value="${esc(state.activity)}" readonly></div><button class="button secondary" data-action="share-selected">Deel met geselecteerden</button></article><article class="card"><h2>Over deze demo</h2><p class="subtitle">Projecten worden lokaal opgeslagen. De volgende bouwstap voegt synchronisatie tussen apparaten toe.</p></article></aside></div>`;
 }
 function joinView() {
  return `<div class="student-view">${heading("LEERLING","Doe mee met de klas","Vul je naam in zodat de docent je werk kan volgen.")}<article class="card"><div class="field"><label for="student-name-input">Jouw naam</label><input id="student-name-input" autocomplete="given-name" maxlength="40" placeholder="Bijvoorbeeld Sam"></div><button class="button" data-action="join-class">Ga naar de klas</button><p class="help" style="margin-top:14px">Klascode: <strong>${esc(state.joinCode)}</strong></p></article></div>`;
@@ -99,20 +116,83 @@ function studentWorkspace() {
  const label=`LEERLING · ${esc(s?.name||"")}`;
  return `<div class="student-view">${heading(label,state.activity,"Je werkt in de klas van je docent.")}
  <article class="card"><div class="card-heading"><div><h2>Jouw werk</h2><p class="subtitle">${state.paused?"De docent heeft de klas tijdelijk gepauzeerd.":"Probeer de startcode uit en maak er iets van jezelf van."}</p></div><span class="status ${state.paused?"paused":""}">${state.paused?"Gepauzeerd":"In de klas"}</span></div>
- <div class="progress"><span></span></div><div class="editor-launch"><div class="symbol">▧</div><div><h2>Verder met je micro:bit-code</h2><p class="subtitle">Open MakeCode en probeer je programma uit in de simulator.</p></div><a class="button" href="${MICROBIT_URL}" target="_blank" rel="noopener">Open MakeCode ↗</a></div>
+ <div class="progress"><span></span></div><div class="makecode-host"><iframe id="makecode-editor" title="MakeCode-editor voor ${esc(s?.name||"leerling")}" src="https://makecode.microbit.org/?controller=1" allow="usb; serial; clipboard-read; clipboard-write"></iframe></div>
  <div class="actions" style="margin-top:16px"><button class="button" data-action="finish">Ik ben klaar</button><button class="button secondary" data-action="leave">Verlaat de klas</button></div><p class="help" style="margin-top:12px">Als je klaar bent, geef je aan hoe de opdracht ging. Alleen jouw docent ziet dit antwoord.</p></article></div>`;
 }
 function render() {
  const params=new URLSearchParams(location.search);
  if(params.has("join") && !sessionStorage.getItem("klascode.student")) { app.innerHTML=joinView(); return; }
- if(sessionStorage.getItem("klascode.student")) { app.innerHTML=studentWorkspace(); return; }
- app.innerHTML=state.activeTab==="code"?codeTab():state.activeTab==="editor"?editorTab():dashboard();
+ if(sessionStorage.getItem("klascode.student")) app.innerHTML=studentWorkspace();
+ else app.innerHTML=state.activeTab==="code"?codeTab():state.activeTab==="editor"?editorTab():dashboard();
+ const frame=document.querySelector("#makecode-editor");
+ if(frame){
+   editorFrame=frame;
+   const studentId=sessionStorage.getItem("klascode.student");
+   editorContext=studentId?{kind:"student",id:studentId}:state.activeTab==="code"?{kind:"student",id:state.selectedStudent}:{kind:"teacher"};
+   frame.addEventListener("load",()=>{
+     if(editorContext?.kind==="student"){
+       const current=state.students.find(s=>s.id===editorContext.id);
+       importProject(current?.project || state.starterProject || null);
+     }else importProject(state.starterProject || null);
+   },{once:true});
+ }
+ const studentId=sessionStorage.getItem("klascode.student");
+ const incoming=studentId&&state.students.find(s=>s.id===studentId)?.incomingProject;
+ if(incoming)setTimeout(()=>showSharedProjectPrompt(studentId,incoming),0);
 }
 function download(name,content,type="application/json") {
  const blob=new Blob([content],{type}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 function selectIds(attr) { return [...document.querySelectorAll(`[${attr}]:checked`)].map(el=>el.getAttribute(attr)); }
-function share(ids) { if(!ids.length){notify("Selecteer eerst een leerling.");return;} notify(`Startcode gedeeld met ${ids.length} leerling${ids.length===1?"":"en"}.`); }
+function baseProject() {
+ const header={target:"microbit",name:"KlasCode",editor:"blocksprj",id:crypto.randomUUID(),recentUse:Date.now(),modificationTime:Date.now(),meta:{}};
+ const text={"main.blocks":"<xml xmlns=\"http://www.w3.org/1999/xhtml\"><block type=\"pxt-on-start\" id=\"klascode-start\" x=\"30\" y=\"30\"></block></xml>","main.ts":"\n","README.md":"KlasCode-startcode","pxt.json":JSON.stringify({name:"klascode",dependencies:{core:"*"},files:["main.blocks","main.ts","README.md"]},null,2)};
+ return {header,text};
+}
+function importProject(project) {
+ if(!editorFrame?.contentWindow)return;
+ const message={type:"pxteditor",id:crypto.randomUUID(),action:"importexternalproject",project:project||baseProject(),response:true};
+ editorFrame.contentWindow.postMessage(message,"https://makecode.microbit.org");
+}
+function persistProject(project) {
+ if(!project)return;
+ if(editorContext?.kind==="student"){
+   state.students=state.students.map(s=>s.id===editorContext.id?{...s,project,code:"MakeCode-project",lastSeen:"Net opgeslagen",status:state.paused?"Gepauzeerd":"In de klas"}:s);
+ }else state.starterProject=project;
+ localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+}
+window.addEventListener("message",event=>{
+ if(event.origin!=="https://makecode.microbit.org" || event.source!==editorFrame?.contentWindow)return;
+ const msg=event.data||{};
+ if(msg.type==="pxthost"&&msg.action==="workspacesync"){
+   const project=editorContext?.kind==="student"?state.students.find(s=>s.id===editorContext.id)?.project:state.starterProject;
+   const projects=project?[project]:[];
+   event.source.postMessage({type:"pxthost",action:"workspacesync",projects},event.origin);
+ }
+ if(msg.type==="pxthost"&&msg.action==="workspacesave"&&msg.project)persistProject(msg.project);
+ if(msg.download){const blob=new Blob([msg.download],{type:"application/octet-stream"});const url=URL.createObjectURL(blob);const link=document.createElement("a");link.href=url;link.download=`${msg.name||"KlasCode"}.hex`;link.click();URL.revokeObjectURL(url);}
+});
+function share(ids) {
+ if(!ids.length){notify("Selecteer eerst een leerling.");return;}
+ const source=editorContext?.kind==="student"?state.students.find(s=>s.id===editorContext.id)?.project:state.starterProject;
+ if(!source){notify("Maak eerst een project in MakeCode en wacht tot het is opgeslagen.");return;}
+ state.students=state.students.map(s=>ids.includes(s.id)?{...s,incomingProject:source,code:"Nieuwe startcode",lastSeen:"Startcode klaar"}:s);
+  persist();notify(`MakeCode-project gedeeld met ${ids.length} leerling${ids.length===1?"":"en"}.`);
+}
+function showSharedProjectPrompt(studentId,project) {
+ if(document.querySelector("[data-share-prompt]"))return;
+ const wrap=document.createElement("div");wrap.className="modal-backdrop";wrap.dataset.sharePrompt="true";
+ wrap.innerHTML=`<section class="modal" role="dialog" aria-modal="true" aria-labelledby="shared-project-title"><h2 id="shared-project-title">Je docent deelt nieuwe code</h2><p class="subtitle">Als je de code opent, vervangt die wat nu in jouw werkruimte staat.</p><div class="modal-actions"><button class="button secondary" data-share-decline>Nu niet</button><button class="button" data-share-accept>Open de startcode</button></div></section>`;
+ document.body.append(wrap);
+ wrap.addEventListener("click",event=>{
+   if(event.target===wrap||event.target.closest("[data-share-decline]")){
+     state.students=state.students.map(s=>s.id===studentId?{...s,incomingProject:null}:s);persist();wrap.remove();return;
+   }
+   if(event.target.closest("[data-share-accept]")){
+     state.students=state.students.map(s=>s.id===studentId?{...s,project,incomingProject:null,code:"Startcode geopend",lastSeen:"Net actief"}:s);persist();importProject(project);wrap.remove();notify("De startcode staat in je werkruimte.");
+   }
+ });
+}
 function report() {
  const rows=state.students.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.status)}</td><td>${esc(s.code)}</td><td>${esc(s.feeling||"—")}</td><td>${esc(s.lastSeen)}</td></tr>`).join("");
  const html=`<!doctype html><html><head><meta charset="utf-8"><title>Voortgang ${esc(state.activity)}</title><style>body{font:14px Arial;color:#261f2c}h1{color:#4c325b}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f7f6f9}</style></head><body><h1>${esc(state.activity)} · Voortgang</h1><p>3Dindeklas · ${new Date().toLocaleDateString("nl-NL")}</p><table><thead><tr><th>Leerling</th><th>Status</th><th>Werk</th><th>Gevoel</th><th>Actief</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
@@ -140,7 +220,7 @@ app.addEventListener("click", async event=>{
  case "mark-finished": state.students=state.students.map(s=>s.id===id?{...s,status:"Klaar"}:s);persist();render();notify("Status aangepast.");break;
  case "remove-student": if(confirm("Deze leerling uit de klas verwijderen?")){state.students=state.students.filter(s=>s.id!==id);state.selectedStudent=state.students[0]?.id||null;persist();render();notify("Leerling verwijderd.");}break;
  case "edit-student": {const s=state.students.find(x=>x.id===id);const name=prompt("Pas de naam aan",s?.name||"");if(name?.trim()){state.students=state.students.map(x=>x.id===id?{...x,name:name.trim()}:x);persist();render();notify("Naam aangepast.");}break;}
- case "join-class": {const name=document.querySelector("#student-name-input").value.trim();if(!name){notify("Vul eerst je naam in.");return;}let s=state.students.find(x=>x.name.toLowerCase()===name.toLowerCase());if(!s){s={id:crypto.randomUUID(),name,status:"In de klas",feeling:"",lastSeen:"Net actief",code:"Startcode ontvangen"};state.students=[...state.students,s];persist();}sessionStorage.setItem("klascode.student",s.id);history.replaceState({},"",location.pathname);render();break;}
+ case "join-class": {const name=document.querySelector("#student-name-input").value.trim();if(!name){notify("Vul eerst je naam in.");return;}let s=state.students.find(x=>x.name.toLowerCase()===name.toLowerCase());if(!s){s={id:crypto.randomUUID(),name,status:"In de klas",feeling:"",lastSeen:"Net actief",code:"Startcode ontvangen",project:state.starterProject};state.students=[...state.students,s];persist();}sessionStorage.setItem("klascode.student",s.id);history.replaceState({},"",location.pathname);render();break;}
  case "finish": showFinishDialog();break;
  case "leave": sessionStorage.removeItem("klascode.student");render();break;
  }
