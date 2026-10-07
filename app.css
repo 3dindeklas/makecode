@@ -95,6 +95,8 @@ h2 { margin-bottom:14px; font-size:1.15rem; }
 .student-view { max-width:960px; margin:0 auto; }
 .progress { height:9px; background:#eeeaf1; border-radius:99px; overflow:hidden; margin:12px 0 20px; }
 .progress span { display:block; width:66%; height:100%; background:var(--teal); }
+.makecode-host { width:100%; min-height:620px; overflow:hidden; border:1px solid var(--line); border-radius:14px; background:white; }
+.makecode-host iframe { display:block; width:100%; height:620px; border:0; }
 .editor-launch { display:grid; gap:14px; place-items:center; min-height:300px; padding:28px; border:1px dashed #c7bdce; border-radius:14px; background:linear-gradient(135deg,#faf8fc,#eef9f8); text-align:center; }
 .editor-launch .symbol { display:grid; place-items:center; width:72px; height:72px; border-radius:22px; background:var(--purple); color:white; font-size:2rem; }
 .range { display:flex; gap:8px; }
@@ -116,6 +118,7 @@ h2 { margin-bottom:14px; font-size:1.15rem; }
   .block-palette strong { width:100%; margin:0 0 4px; }
   .palette-block { margin:0; }
   .workspace { min-height:280px; }
+  .makecode-host,.makecode-host iframe { min-height:560px; height:560px; }
   .stats { gap:7px; }
   .stat { padding:11px; }
   .invite-box { grid-template-columns:1fr; }
