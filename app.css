@@ -99,25 +99,38 @@ h2 { margin-bottom:14px; font-size:1.15rem; }
 .ide-main,.ide-side { display:grid; gap:16px; }
 .ide-controls { display:flex; gap:9px; flex-wrap:wrap; align-items:center; }
 .ide-controls .spacer { flex:1; }
+.mode-switch { display:flex; gap:4px; padding:4px; border:1px solid var(--line); border-radius:13px; background:#f3f0f5; }
+.mode-switch .button { min-height:36px; padding:6px 13px; }
+.mode-switch .button[aria-pressed="true"] { border-color:var(--purple); background:var(--purple); color:white; }
 .ide-workspace { height:590px; min-height:440px; overflow:hidden; border:1px solid var(--line); border-radius:14px; background:#fff; }
 .ide-workspace .blocklySvg { background-color:#fff; }
 .ide-workspace .blocklyToolboxDiv { background:#f4f1f6; }
 .microbit-card { display:grid; place-items:center; min-height:350px; padding:16px; background:linear-gradient(135deg,#f2edf7,#eaf6f5); border:1px solid var(--line); border-radius:14px; }
-.microbit-board { width:min(100%,270px); padding:20px 18px 16px; border-radius:27px; background:#4c325b; box-shadow:0 12px 22px rgb(38 25 46 / 18%); }
-.microbit-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; color:#f4eef6; font-size:.72rem; font-weight:700; letter-spacing:.08em; }
-.microbit-version { min-height:34px; padding:4px 8px; border:1px solid rgb(255 255 255 / 30%); border-radius:8px; background:#392546; color:white; }
-.led-matrix { display:grid; grid-template-columns:repeat(5,1fr); gap:9px; width:min(100%,190px); aspect-ratio:1; margin:0 auto 16px; padding:14px; border-radius:15px; background:#26192e; }
-.led-dot { border-radius:50%; background:#543c61; transition:background .12s,box-shadow .12s; }
-.led-dot.lit { background:#fbbd30; box-shadow:0 0 11px rgb(251 189 48 / 65%); }
-.microbit-controls { display:flex; justify-content:space-between; align-items:center; padding:0 5px; }
-.microbit-button { width:38px; height:38px; border:3px solid #ccb5d9; border-radius:50%; background:#4c325b; color:#fff; font-weight:700; }
-.microbit-button:active { background:#79529a; }
-.microbit-speaker { color:#fbbd30; font-size:1.15rem; }
-.microbit-speaker.v1-disabled { color:#82758a; }
+.microbit-board { position:relative; width:min(100%,270px); min-height:324px; padding:14px 19px 0; border:1px solid #08736d; border-radius:25px 25px 8px 8px; background:linear-gradient(145deg,#12a59b,#00847d 55%,#00756d); box-shadow:inset 0 1px rgb(255 255 255 / 30%),0 12px 22px rgb(38 25 46 / 18%); }
+.microbit-board::before,.microbit-board::after { position:absolute; z-index:0; width:11px; height:11px; border:2px solid #63c2b5; border-radius:50%; content:""; }
+.microbit-board::before { top:9px; left:9px; }
+.microbit-board::after { top:9px; right:9px; }
+.microbit-top { position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; min-height:30px; margin-bottom:2px; color:#e6fff9; font-size:.66rem; font-weight:700; letter-spacing:.08em; }
+.microbit-mark { font-size:.88rem; letter-spacing:-.03em; }
+.microbit-model { display:flex; align-items:center; gap:4px; color:#d0f3ec; font-size:.55rem; }
+.microbit-version { min-height:25px; padding:2px 4px; border:1px solid rgb(255 255 255 / 35%); border-radius:6px; background:#076f69; color:white; font-size:.65rem; }
+.microbit-touch { display:flex; justify-content:center; gap:5px; height:22px; align-items:center; }
+.microbit-touch span { width:4px; height:4px; border-radius:50%; background:#b7ebe0; opacity:.7; }
+.led-matrix { position:relative; z-index:1; display:grid; grid-template-columns:repeat(5,1fr); gap:9px; width:min(100%,190px); aspect-ratio:1; margin:0 auto 13px; padding:14px; border:4px solid #222b2e; border-radius:12px; background:#171e20; box-shadow:inset 0 2px 6px #000,0 2px 0 rgb(255 255 255 / 20%); }
+.led-dot { border-radius:50%; background:#481d20; box-shadow:inset 0 1px 2px rgb(0 0 0 / 55%); transition:background .12s,box-shadow .12s; }
+.led-dot.lit { background:#ff453f; box-shadow:0 0 4px 2px rgb(255 69 63 / 62%),0 0 11px rgb(255 69 63 / 60%); }
+.microbit-controls { display:flex; justify-content:space-between; align-items:center; padding:0 2px 10px; }
+.microbit-button { width:40px; height:40px; border:2px solid #d4d9d8; border-radius:50%; background:linear-gradient(#f6f7f5,#c8cecc); color:#485150; font-size:.74rem; font-weight:800; box-shadow:0 3px 0 #08756e, inset 0 1px white; }
+.microbit-button:active { transform:translateY(2px); box-shadow:0 1px 0 #08756e; }
+.microbit-speaker { color:#d3fff2; font-size:1rem; }
+.microbit-speaker.v1-disabled { color:#4d948c; }
+.microbit-connector { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; height:24px; margin:0 -19px; padding:0 13px; border-radius:0 0 7px 7px; background:#dba839; box-shadow:inset 0 2px 0 #f8d26b; }
+.microbit-connector span { border-right:1px solid rgb(99 62 8 / 30%); border-left:1px solid rgb(255 239 174 / 45%); background:linear-gradient(90deg,#bc8423,#f2c758,#bc8423); }
 .microbit-label { margin:12px 0 0; color:var(--muted); font-size:.82rem; text-align:center; }
-.code-panel { display:none; overflow:hidden; border:1px solid var(--line); border-radius:14px; background:#26192e; }
-.code-panel.is-open { display:block; }
-.code-panel pre { max-height:270px; overflow:auto; margin:0; padding:16px; color:#f5edfa; font: .86rem/1.6 ui-monospace,SFMono-Regular,Consolas,monospace; white-space:pre-wrap; }
+.javascript-editor { min-height:430px; overflow:auto; border:1px solid #39313e; border-radius:14px; background:#26192e; }
+.javascript-editor[hidden] { display:none !important; }
+.javascript-editor pre { min-height:390px; overflow:auto; margin:0; padding:20px; color:#f5edfa; font:.9rem/1.7 ui-monospace,SFMono-Regular,Consolas,monospace; white-space:pre-wrap; }
+.javascript-editor p { margin:0; padding:0 20px 16px; color:#c8bdcf; font-size:.8rem; }
 .config-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
 .block-toggle { display:flex; gap:10px; align-items:flex-start; padding:13px; border:1px solid var(--line); border-radius:12px; background:#fff; }
 .block-toggle input { width:19px; height:19px; accent-color:#4c325b; }
@@ -133,6 +146,13 @@ h2 { margin-bottom:14px; font-size:1.15rem; }
 .modal { width:min(520px,100%); padding:24px; border-radius:18px; background:white; box-shadow:0 20px 70px rgb(0 0 0 / 24%); }
 .modal h2 { margin-bottom:8px; }
 .modal-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:10px; margin-top:18px; }
+.is-paused { overflow:hidden; }
+.class-pause-overlay { position:fixed; inset:0; z-index:9999; display:grid; place-items:center; padding:24px; background:rgb(28 20 34 / 88%); backdrop-filter:blur(8px); }
+.pause-message { width:min(560px,100%); padding:clamp(28px,6vw,52px); border:1px solid rgb(255 255 255 / 18%); border-radius:24px; background:#fff; box-shadow:0 24px 80px rgb(0 0 0 / 35%); text-align:center; }
+.pause-message .eyebrow { margin-bottom:8px; }
+.pause-message h1 { color:var(--purple); }
+.pause-message p:not(.eyebrow) { margin-bottom:22px; color:var(--muted); }
+.pause-symbol { display:grid; place-items:center; width:62px; height:62px; margin:0 auto 18px; border-radius:20px; background:#fff3d2; color:#765300; font-size:1.8rem; font-weight:800; }
 @media (max-width:900px) { .layout { grid-template-columns:1fr; } }
 @media (max-width:900px) { .ide-layout { grid-template-columns:1fr; } }
 @media (max-width:620px) {
@@ -147,6 +167,8 @@ h2 { margin-bottom:14px; font-size:1.15rem; }
   .palette-block { margin:0; }
   .workspace { min-height:280px; }
   .ide-workspace { height:500px; min-height:420px; }
+  .javascript-editor { min-height:360px; }
+  .javascript-editor pre { min-height:320px; padding:15px; }
   .config-grid { grid-template-columns:1fr; }
   .stats { gap:7px; }
   .stat { padding:11px; }
