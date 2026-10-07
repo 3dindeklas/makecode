@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#4c325b">
+  <meta name="description" content="Een klasomgeving van 3Dindeklas voor samen programmeren met de micro:bit.">
+  <title>KlasCode · 3Dindeklas</title>
+  <link rel="stylesheet" href="https://3dindeklas.github.io/Foundation/foundation.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body class="threediklas">
+  <header class="brand-header">
+    <div class="brand-header__inner">
+      <a class="brand-header__brand" href="https://www.3dindeklas.nl/" aria-label="3Dindeklas home">
+        <img src="https://3dindeklas.github.io/Foundation/assets/logo-3dindeklas.png" alt="3dindeklas">
+      </a>
+      <div class="brand-header__title"><span>LEREN DOOR CREËREN</span><strong>KlasCode</strong></div>
+      <a class="brand-header__link" href="https://www.3dindeklas.nl/">Naar 3dindeklas.nl</a>
+    </div>
+  </header>
+
+  <main id="app" class="app-shell" aria-live="polite"></main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <input id="restore-file" type="file" accept=".json,application/json" hidden>
+  <script src="https://unpkg.com/blockly@12.3.1/blockly_compressed.js" defer></script>
+  <script src="https://unpkg.com/blockly@12.3.1/blocks_compressed.js" defer></script>
+  <script src="https://unpkg.com/blockly@12.3.1/javascript_compressed.js" defer></script>
+  <script src="https://unpkg.com/blockly@12.3.1/msg/nl.js" defer></script>
+  <script src="editor.js" defer></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
