@@ -91,7 +91,7 @@
     return {kind:"categoryToolbox",contents:Object.entries(groups).map(([name,contents])=>({kind:"category",name,colour:colors[name],contents}))};
   }
 
-  function mount({workspaceId,previewId,codeId,saveKey,initialState,blockConfig,onChange}) {
+  function mount({workspaceId,previewId,codeId,saveKey,initialState,blockConfig,onChange,paused=false}) {
     const root=document.getElementById(workspaceId);
     if(!root||!window.Blockly){if(root)root.innerHTML="<p class='help'>De blokkeneditor kan niet laden. Controleer of Blockly beschikbaar is.</p>";return null;}
     if(currentWorkspace){currentWorkspace.dispose();currentWorkspace=null;}
@@ -107,14 +107,18 @@
     }
     const renderCode=()=>{const gen=window.javascript?.javascriptGenerator||Blockly.JavaScript;const code=gen?gen.workspaceToCode(ws):"";const output=document.getElementById(codeId);if(output)output.textContent=code||"// Sleep blokken in de werkruimte.";};
     const save=()=>{const snapshot=Blockly.serialization.workspaces.save(ws);localStorage.setItem(saveKey,JSON.stringify(snapshot));if(onChange)onChange(snapshot);renderCode();};
-    ws.addChangeListener(e=>{if(e.isUiEvent)return;save();});
+    let autoRunTimer;
+    const scheduleAutoRun=()=>{clearTimeout(autoRunTimer);if(paused)return;autoRunTimer=setTimeout(()=>{stop();run();},180);};
+    ws.addChangeListener(e=>{if(e.isUiEvent)return;save();scheduleAutoRun();});
     workspaceChange=save;renderCode();
     const led=document.getElementById(previewId);
+    let microbitVersion="v2";
     const setLeds=pattern=>{if(!led)return;led.querySelectorAll("[data-led]").forEach((dot,index)=>dot.classList.toggle("lit",!!pattern[Math.floor(index/5)]?.[index%5]&&pattern[Math.floor(index/5)][index%5]==="1"));};
     const clearLeds=()=>setLeds(["00000","00000","00000","00000","00000"]);
     const showNumber=n=>setLeds(digits[String(n)]||digits[String(Math.max(-9,Math.min(9,n)))]);
     const playTone=async(freq,duration,token)=>{
       if(token!==runToken)return;
+      if(microbitVersion==="v1"){await new Promise(resolve=>setTimeout(resolve,duration));return;}
       try{audioContext ||= new(window.AudioContext||window.webkitAudioContext)();await audioContext.resume();const osc=audioContext.createOscillator();const gain=audioContext.createGain();osc.type="sine";osc.frequency.value=freq;gain.gain.value=volume*.16;osc.connect(gain);gain.connect(audioContext.destination);osc.start();osc.stop(audioContext.currentTime+duration/1000);}
       catch{notifySound();}
       await new Promise(resolve=>setTimeout(resolve,duration));
@@ -134,8 +138,9 @@
         case "kc_repeat":for(let i=0;i<Number(b.getFieldValue("TIMES"))&&token===runToken;i++)await runStack(b.getInputTargetBlock("DO"),token);break;
       }
     };
-    const events=()=>ws.getTopBlocks(true).filter(b=>b.type.startsWith("kc_on_"));
+    const events=()=>ws.getTopBlocks(true).filter(b=>b.type.startsWith("kc_on_")||b.type==="kc_forever");
     const run=async(button)=>{
+      if(paused)return;
       if(running)return;
       running=true;runToken++;const token=runToken;
       document.getElementById("run-program")?.setAttribute("disabled","true");document.getElementById("stop-program")?.removeAttribute("disabled");
@@ -144,7 +149,13 @@
       for(const b of top)if(b.type==="kc_on_start")runStack(b.getInputTargetBlock("DO"),token);
       for(const b of top)if(b.type==="kc_forever")runForever(b.getInputTargetBlock("DO"),token);
       activeButton=button=>{for(const b of top)if(b.type==="kc_on_button"&&(b.getFieldValue("BUTTON")===button||b.getFieldValue("BUTTON")==="AB"))runStack(b.getInputTargetBlock("DO"),runToken);};
-      document.querySelectorAll("[data-microbit-button]").forEach(btn=>btn.onclick=()=>activeButton(btn.dataset.microbitButton));
+      const pressedButtons=new Set();
+      document.querySelectorAll("[data-microbit-button]").forEach(btn=>{
+        const release=()=>pressedButtons.delete(btn.dataset.microbitButton);
+        btn.onpointerdown=()=>{pressedButtons.add(btn.dataset.microbitButton);activeButton(pressedButtons.has("A")&&pressedButtons.has("B")?"AB":btn.dataset.microbitButton);};
+        btn.onpointerup=release;btn.onpointerleave=release;btn.onpointercancel=release;
+        btn.onclick=()=>{if(!window.PointerEvent)activeButton(btn.dataset.microbitButton);};
+      });
       await wait(40);
     };
     let activeButton=()=>{};
@@ -154,9 +165,12 @@
     document.getElementById("stop-program")?.addEventListener("click",stop);
     document.getElementById("clear-workspace")?.addEventListener("click",()=>{ws.clear();const block=ws.newBlock("kc_on_start");block.initSvg();block.render();block.moveBy(55,45);});
     document.getElementById("download-code")?.addEventListener("click",()=>{const code=(window.javascript?.javascriptGenerator||Blockly.JavaScript).workspaceToCode(ws);const blob=new Blob([code],{type:"text/plain"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="KlasCode-programma.ts";a.click();URL.revokeObjectURL(url);});
-    document.getElementById("toggle-code")?.addEventListener("click",e=>{const panel=document.getElementById(codeId)?.parentElement;const shown=panel?.classList.toggle("is-open");e.currentTarget.setAttribute("aria-expanded",String(!!shown));});
-    document.getElementById("microbit-version")?.addEventListener("change",e=>{const speaker=document.querySelector(".microbit-speaker");speaker?.classList.toggle("v1-disabled",e.target.value==="v1");});
-    return {getState:()=>Blockly.serialization.workspaces.save(ws),getCode:()=>((window.javascript?.javascriptGenerator||Blockly.JavaScript).workspaceToCode(ws)),dispose:()=>{stop();ws.dispose();if(currentWorkspace===ws)currentWorkspace=null;}};
+    const blocksMode=document.getElementById("blocks-mode"), javascriptMode=document.getElementById("javascript-mode");
+    document.getElementById("show-blocks")?.addEventListener("click",e=>{blocksMode.hidden=false;javascriptMode.hidden=true;e.currentTarget.setAttribute("aria-pressed","true");document.getElementById("show-javascript")?.setAttribute("aria-pressed","false");Blockly.svgResize(ws);});
+    document.getElementById("show-javascript")?.addEventListener("click",e=>{blocksMode.hidden=true;javascriptMode.hidden=false;e.currentTarget.setAttribute("aria-pressed","true");document.getElementById("show-blocks")?.setAttribute("aria-pressed","false");});
+    document.getElementById("microbit-version")?.addEventListener("change",e=>{microbitVersion=e.target.value;const speaker=document.querySelector(".microbit-speaker");speaker?.classList.toggle("v1-disabled",microbitVersion==="v1");const note=document.getElementById("sound-note");if(note)note.textContent=microbitVersion==="v1"?"V1 heeft geen ingebouwde luidspreker.":"";});
+    scheduleAutoRun();
+    return {getState:()=>Blockly.serialization.workspaces.save(ws),getCode:()=>((window.javascript?.javascriptGenerator||Blockly.JavaScript).workspaceToCode(ws)),run,stop,dispose:()=>{clearTimeout(autoRunTimer);stop();ws.dispose();if(currentWorkspace===ws)currentWorkspace=null;}};
   }
   function notifySound(){const el=document.getElementById("sound-note");if(el)el.textContent="Je browser kan het geluid niet afspelen. Bekijk de noot op het scherm.";}
   window.KlasCodeEditor={BLOCKS,mount};
